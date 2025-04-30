@@ -1,0 +1,7 @@
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+clients:
+  - url: "http://localhost:3100/loki/api/v1/push"

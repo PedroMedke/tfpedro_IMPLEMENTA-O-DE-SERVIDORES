@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: observability_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
+    networks:
+      - observability
+
+  postgres_exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://admin:admin123@postgres:5432/observability_db?sslmode=disable"
+    depends_on:
+      - postgres
+    ports:
+      - "9187:9187"
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+
+  fluentd:
+    image: fluent/fluentd:v1.14-1
+    container_name: fluentd
+    restart: always
+    volumes:
+      - ./fluentd.conf:/fluentd/etc/fluentd.conf  # Arquivo de configuração do Fluentd
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+
+  loki:
+    image: grafana/loki:2.5.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/config.yaml
+
+volumes:
+  pgdata:
+  grafana-storage:
+
+networks:
+  observability:
